@@ -1,0 +1,47 @@
+name: vcf_preprocess
+description: extract_vep_annotation
+keywords:
+  - VEP
+  - bcftools
+tools:
+  - bcftools:
+      description: BCFtools is a set of utilities that manipulate variant calls in the
+        Variant Call Format (VCF) and its binary counterpart BCF. All commands work
+        transparently with both VCFs and BCFs, both uncompressed and BGZF-compressed.  Most
+        commands accept VCF, bgzipped VCF and BCF with filetype detected automatically
+        even when streaming from a pipe. Indexed VCF and BCF will work in all situations.
+        Un-indexed VCF and BCF and streams will work in most, but not all situations.
+      homepage: https://samtools.github.io/bcftools/
+      documentation: https://samtools.github.io/bcftools/howtos/index.html
+      tool_dev_url: https://github.com/samtools/bcftools
+      doi: "10.1093/gigascience/giab008"
+      licence: ["MIT", "GPL-3.0-or-later"]
+      identifier: biotools:bcftools
+input:
+  - vcf_file:
+      type: file
+      description: VCF
+      pattern: "*.{vcf,vcf.gz}"
+output:
+  - vcf_normalised:
+    - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - "*.normalised.vcf.gz":
+        type: file
+        description: output stripped vcf
+        pattern: "*.normalised.vcf.gz"
+        ontologies: []
+  - versions:
+      - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+          ontologies: []
+
+authors:
+  - "@tdkaliki"
+maintainers:
+  - "@tdkaliki"

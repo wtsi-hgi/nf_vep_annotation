@@ -1,0 +1,30 @@
+name: combine_tsvs
+description: combines and sorts TSV files with VEP annotation
+keywords:
+  - VEP
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - vep_outputs:
+        type: file
+        description: Input TSV files with VEP annotation
+        pattern: "*.tsv"
+output:
+  - vep_annotations:
+    - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - "*.tsv":
+        type: path
+        description: Combined TSV file with VEP annotation
+        pattern: "*.tsv"
+
+authors:
+  - "@tdkaliki"
+maintainers:
+  - "@tdkaliki"

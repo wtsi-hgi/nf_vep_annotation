@@ -1,0 +1,30 @@
+name: run_vep
+description: Run VEP annotation
+keywords:
+  - VEP
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - vcf:
+        type: file
+        description: Input VCF file
+        pattern: "*.vcf.gz"
+output:
+  - vep_vcf:
+    - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - "*.vep.vcf.gz":
+        type: path
+        description: Output VCF file with VEP annotation
+        pattern: "*.vep.vcf.gz"
+
+authors:
+  - "@tdkaliki"
+maintainers:
+  - "@tdkaliki"
