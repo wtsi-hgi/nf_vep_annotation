@@ -38,10 +38,10 @@ workflow RUN_VEP_ANNOTATION{
             }
         }
         //make map for vep annotation process
-        //numbers=vcf_chunks.flatten().collect().map { it.size() }.map { 1..it }.flatten()
-        //shards=vcf_chunks.flatten().merge(numbers).map{
-        //vcf_chunks, numbers -> [[id:'vep_annotation_'+numbers], vcf_chunks]
-        //}
+        numbers=vcf_chunks.flatten().collect().map { it.size() }.map { 1..it }.flatten()
+        shards=vcf_chunks.flatten().merge(numbers).map{
+        vcf_chunks, numbers -> [[id:'vep_annotation_'+numbers], vcf_chunks]
+        }
     }else{
         //work with VCF shards
         vcf_files = channel.fromPath("$params.vcf_in/*.vcf.gz")
@@ -56,19 +56,19 @@ workflow RUN_VEP_ANNOTATION{
         }
     }
     //run VEP
-    //RUN_VEP(shards)
+    RUN_VEP(shards, params.vep_options)
     //extract VEP annotation and save as TSV files
-    //vep_vcfs=RUN_VEP.out.vep_vcf.merge(numbers).map{
-    //    meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
-    //}
-    //reference_fasta=channel.fromPath(params.ref_fasta)
-    //BCFTOOLS_SPLIT_VEP(vep_vcfs, reference_fasta)
+    vep_vcfs=RUN_VEP.out.vep_vcf.merge(numbers).map{
+        meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
+    }
+    reference_fasta=channel.fromPath(params.ref_fasta)
+    BCFTOOLS_SPLIT_VEP(vep_vcfs, reference_fasta)
     //combine VEP annotations from all shards
-    //tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
-    //    meta, tsf_file -> [tsf_file]
-    //}
-    //vep_tsvs=tsvs.collect().map{
-    //    tsf_files -> [[id:'annotation_concatination'], tsf_files]
-    //}
-    //COMBINE_TSVS(vep_tsvs)
+    tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
+        meta, tsf_file -> [tsf_file]
+    }
+    vep_tsvs=tsvs.collect().map{
+        tsf_files -> [[id:'annotation_concatination'], tsf_files]
+    }
+    COMBINE_TSVS(vep_tsvs)
 }
