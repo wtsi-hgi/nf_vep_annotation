@@ -57,6 +57,7 @@ workflow RUN_VEP_ANNOTATION{
     }
     //run VEP
     RUN_VEP(shards, params.vep_options)
+
     //extract VEP annotation and save as TSV files
     vep_vcfs=RUN_VEP.out.vep_vcf.merge(numbers).map{
         meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
