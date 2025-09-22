@@ -1,6 +1,6 @@
 include { VCF_PREPROCESS } from '../modules/local/vcf_preprocess/main'
 include { RUN_VEP } from '../modules/local/run_vep/main'
-include { SPLIT_VCF } from '../modules/local/split_vcf/main'
+include { NORM_VCF; NO_G_VCF; SPLIT_VCF } from '../modules/local/split_vcf/main'
 include {SPLIT_VCF_BED} from '../modules/local/split_vcf_bed/main'
 include { BCFTOOLS_SPLIT_VEP } from '../modules/local/bcftools_split_vep/main'
 include { COMBINE_TSVS } from '../modules/local/combine_tsvs/main'
@@ -12,12 +12,16 @@ workflow RUN_VEP_ANNOTATION{
     // split VCF or not
     if("${params.split_input}"=='true'){
         vcf_file=channel.fromPath(params.vcf_infile)
+        NORM_VCF(vcf_file)
+        vcf_norm=NORM_VCF.out.normolized_vcf
+        NO_G_VCF(vcf_norm)
+        vcf_noG=NO_G_VCF.out.no_g_vcf
         //split VCF using bed or not
         if("${params.use_bed_to_split}"=='true'){
             //split VCF using bed
             bed_file=channel.fromPath(params.interval_bed)
-            vcf_input = vcf_file.map{
-            vcf_file -> [[id:'split_vcf_using_bed'], vcf_file]
+            vcf_input = vcf_noG.map{
+            vcf_noG -> [[id:'split_vcf_using_bed'], vcf_noG]
             }
             SPLIT_VCF_BED(vcf_input, bed_file)
             //prepare VCF chunks for VEP annoation
@@ -25,11 +29,11 @@ workflow RUN_VEP_ANNOTATION{
             meta, splited_vcfs -> [splited_vcfs]
             }
             vcf_chunks.view()
-        }else{
+        }else{//change vcf_file here into NO_G_VCF
             //split one VCF into N chuks
             number_of_chunks=channel.value(params.number_of_chunks)
-            vcf_input = number_of_chunks.combine(vcf_file).map{
-            number_of_chunks, vcf_file -> [[id:'split_vcf_to_' + number_of_chunks + '_chunks'], vcf_file]
+            vcf_input = number_of_chunks.combine(vcf_noG).map{
+            number_of_chunks, vcf_noG -> [[id:'split_vcf_to_' + number_of_chunks + '_chunks'], vcf_noG]
             }
             SPLIT_VCF(vcf_input, number_of_chunks)
             //prepare VCF chunks for VEP annoation
