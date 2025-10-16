@@ -1,7 +1,7 @@
 process BCFTOOLS_SPLIT_VEP {    
     input:
-    tuple val(meta), path (vep_vcf_file)
-    path ref_fa
+    tuple val(meta), path (vep_vcf_file),  path (ref_fa)
+   
 
     output:
     tuple val(meta), path("${vep_vcf_file.name.replaceAll(/\.vcf.*/, '.tsv')}"), emit: vep_split_tsv

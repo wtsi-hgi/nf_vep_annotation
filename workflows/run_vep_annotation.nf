@@ -67,7 +67,9 @@ workflow RUN_VEP_ANNOTATION{
         meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
     }
     reference_fasta=channel.fromPath(params.ref_fasta)
-    BCFTOOLS_SPLIT_VEP(vep_vcfs, reference_fasta)
+    //vep_vcfs.view()
+    //vep_vcfs.combine(reference_fasta).view()
+    BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
     //combine VEP annotations from all shards
     tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
         meta, tsf_file -> [tsf_file]
