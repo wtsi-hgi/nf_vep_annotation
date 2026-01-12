@@ -13,18 +13,26 @@ process SPLIT_VCF_BED {
     def prefix = task.ext.prefix ?: "${meta.id}"
 
     """
-    count=0
-    bcftools index -t ${vcf_file}
-    cat ${bed} | awk '{FS="\t";ODS="\t"} {print \$1 ":" \$2 "-" \$3}' | while IFS= read -r line; do
-        ((count+=1))
-        suffix=\$(printf "%05d" \$count)
-        echo "\$suffix - \$line" 1>&2
-        bcftools view --regions "\$line" ${vcf_file} | bcftools norm -m- | bcftools view --drop-genotypes -Oz -o chunk_\${suffix}.vcf.gz &
-    done
+        count=0
+        bcftools index -t ${vcf_file}
+        cat ${bed} | awk '{FS="\t";ODS="\t"} {print \$1 ":" \$2 "-" \$3}' | while IFS= read -r line; do
+            ((count+=1))
+            suffix=\$(printf "%05d" \$count)
+            echo "\$suffix - \$line" 1>&2
+            bcftools view --regions "\$line" ${vcf_file} | bcftools norm -m- | bcftools view --drop-genotypes -Oz -o chunk_\${suffix}.vcf.gz &
+        done
 
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bcftools: \$(bcftools --version 2>&1 | head -n1 | sed 's/^.*bcftools //; s/ .*\$//')
-    END_VERSIONS
-    """
+        cat <<-END_VERSIONS > versions.yml
+        "${task.process}":
+            bcftools: \$(bcftools --version 2>&1 | head -n1 | sed 's/^.*bcftools //; s/ .*\$//')
+        END_VERSIONS
+        """
+    stub:
+        """
+        i="1"
+        for i in \$(seq 1 ${N}); do
+            touch chunk_\${i}.vcf.gz
+        done
+        touch versions.yml
+        """  
 }
