@@ -6,6 +6,12 @@ include { BCFTOOLS_SPLIT_VEP } from '../modules/local/bcftools_split_vep/main'
 include { COMBINE_TSVS } from '../modules/local/combine_tsvs/main'
 include { BCFTOOLS_EXTRACT_CSQ } from '../modules/local/extract_csq/main'
 include { COMBINE_CSQS } from '../modules/local/combine_csqs/main'
+include { GET_CSQ_HEADER } from '../modules/local/csq_header/main'
+include { BCFTOOLS_ANNOTATE } from '../modules/local/bcftools_annotation/main'
+
+
+
+
 workflow RUN_VEP_ANNOTATION{
     // Create the output directory if it doesn't exist
     if (!file(params.publishdir).exists()) {
@@ -24,7 +30,7 @@ workflow RUN_VEP_ANNOTATION{
         if ("${params.annotate_vcf}"=='true'){
             NORM_VCF_WITH_G(vcf_file)
             norm_vcf_with_g=NORM_VCF_WITH_G.out.normolized_vcf.map{
-                vcf_norm -> [[id:'norm_vcf_with_genomes'], vcf_norm]
+                meta, vcf_norm -> [[id:'norm_vcf_with_genomes'], vcf_norm]
             }
         }
         //split VCF using bed or not
@@ -39,7 +45,7 @@ workflow RUN_VEP_ANNOTATION{
             vcf_chunks=SPLIT_VCF_BED.out.splited_vcfs.map{
             meta, splited_vcfs -> [splited_vcfs]
             }
-            vcf_chunks.view()
+            //ßvcf_chunks.view()
         }else{//change vcf_file here into NO_G_VCF
             //split one VCF into N chuks
             number_of_chunks=channel.value(params.number_of_chunks)
@@ -88,9 +94,6 @@ workflow RUN_VEP_ANNOTATION{
             norm_vcf_with_g=NORM_VCF_WITH_G.out.normolized_vcf.merge(numbers).map{
                 meta, vcf_file, numbers -> [[id:'norm_vcf_with_genomes_'+numbers], vcf_file]
             }
-            .map{
-            vcf_norm -> [[id:'norm_vcf_with_genomes'], vcf_norm]
-            }
         }
     }
     //run VEP
@@ -100,6 +103,10 @@ workflow RUN_VEP_ANNOTATION{
     vep_vcfs=RUN_VEP.out.vep_vcf.merge(numbers).map{
         meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
     }
+
+    GET_CSQ_HEADER(vep_vcfs.first())
+    header=GET_CSQ_HEADER.out.csq_header
+
     BCFTOOLS_EXTRACT_CSQ(vep_vcfs)
     reference_fasta=channel.fromPath(params.ref_fasta)
     //vep_vcfs.view()
@@ -121,7 +128,13 @@ workflow RUN_VEP_ANNOTATION{
     COMBINE_TSVS(vep_tsvs)
     COMBINE_CSQS(csq_tsvs)
     //INDEX_TSV(COMBINE_TSVS.out.vep_annotations)
-    //get heder
+    csq=COMBINE_CSQS.out.vep_annotations
+    if ("${params.annotate_vcf}"=='true'){
+        //norm_vcf_with_g.view()
+        //csq.view()
+        //header.view()
+        BCFTOOLS_ANNOTATE(norm_vcf_with_g, csq, header)
+    }
     //BCFTOOLS_ANNOTATE(vcf_input_file, INDEX_TSV.out.tsv, header)
     //BCFTOOLS_ANNOTATE()
 }
