@@ -1,0 +1,50 @@
+name: bcftools_split_vep_complete
+description: extract_vep_annotation_complete
+keywords:
+  - VEP
+  - bcftools
+  - CSQ
+tools:
+  - bcftools:
+      description: BCFtools is a set of utilities that manipulate variant calls in the Variant Call Format (VCF) and BCF.
+      homepage: https://samtools.github.io/bcftools/
+      documentation: https://samtools.github.io/bcftools/howtos/plugin.split-vep.html
+      tool_dev_url: https://github.com/samtools/bcftools
+      doi: "10.1093/gigascience/giab008"
+      licence: ["MIT", "GPL-3.0-or-later"]
+      identifier: biotools:bcftools
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - vcf_file:
+        type: file
+        description: VEP-annotated VCF/VCF.GZ containing INFO/CSQ
+        pattern: "*.{vcf,vcf.gz}"
+  - ref_fa:
+      type: file
+      description: reference genome in fasta format
+      pattern: "*.{fasta,fa}"
+output:
+  - vep_complete_tsv:
+    - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - "*.complete.tsv":
+        type: file
+        description: output TSVs containing all VEP CSQ subfields, one line per transcript consequence
+        pattern: "*.complete.tsv"
+        ontologies: []
+  - versions:
+      - "versions.yml":
+          type: file
+          description: File containing software versions
+          pattern: "versions.yml"
+          ontologies: []
+authors:
+  - "@eh19"
+

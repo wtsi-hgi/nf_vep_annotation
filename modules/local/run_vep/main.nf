@@ -13,6 +13,7 @@ process RUN_VEP {
 
     def vcf_out="${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}"
     """
+    export VEP_DIR_PLUGINS=/opt/vep/.vep/Plugins
     vep \
     --cache \
     ${vep_options} \

@@ -1,0 +1,38 @@
+flowchart TB
+    base["Base commit<br/>cc66b3a"]
+
+    subgraph upstream["origin/main since cc66b3a"]
+        u1["3a27ff1<br/>Drop genotypes first to speed pipeline"]
+        u2["14b1724<br/>Add bcftools annotation path"]
+        up_shared["Shared files changed upstream<br/>conf/base.config<br/>nextflow.config<br/>workflows/run_vep_annotation.nf<br/>modules/local/run_vep/main.nf"]
+        up_only["Upstream-only additions/edits<br/>modules/local/bcftools_annotation/main.nf<br/>modules/local/combine_csqs/*<br/>modules/local/extract_csq/*<br/>modules/local/csq_header/main.nf<br/>modules/local/split_vcf/main.nf<br/>modules/local/split_vcf_bed/main.nf<br/>modules/local/vcf_preprocess/main.nf<br/>modules/local/bcftools_split_vep/main.nf<br/>modules/local/combine_tsvs/main.nf"]
+        u1 --> u2
+        u2 --> up_shared
+        u2 --> up_only
+    end
+
+    subgraph local["Current local work on premerge branch"]
+        l_shared["Shared files changed locally<br/>conf/base.config<br/>nextflow.config<br/>workflows/run_vep_annotation.nf<br/>modules/local/run_vep/main.nf"]
+        l_only["Local-only tracked edits<br/>main.nf<br/>bsub_nextflow.sh"]
+        l_new["Local-only new modules<br/>modules/local/annotate_vcf_with_vep_complete_csq/*<br/>modules/local/bcftools_split_vep_complete/*<br/>modules/local/combine_tsvs_complete/*<br/>modules/local/prepare_vep_complete_annot/*"]
+        l_goal["Local design intent<br/>Build complete-VEP TSV path<br/>and annotate final per-chromosome VCF outputs"]
+        l_shared --> l_only
+        l_shared --> l_new
+        l_new --> l_goal
+    end
+
+    subgraph merge["Pre-merge integration view"]
+        hotspot["Manual merge hotspots<br/>1. conf/base.config<br/>2. nextflow.config<br/>3. workflows/run_vep_annotation.nf<br/>4. modules/local/run_vep/main.nf"]
+        safe["Mostly additive / lower-risk merge areas<br/>main.nf<br/>bsub_nextflow.sh<br/>local *_complete modules<br/>upstream CSQ/bcftools modules"]
+        strategy["Suggested merge shape<br/>Keep upstream mainline changes<br/>Layer local complete-annotation path behind<br/>separate entrypoints or params"]
+        hotspot --> strategy
+        safe --> strategy
+    end
+
+    base --> u1
+    base --> l_shared
+    up_shared --> hotspot
+    l_shared --> hotspot
+    up_only --> safe
+    l_only --> safe
+    l_new --> safe
