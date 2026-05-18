@@ -1,4 +1,10 @@
-process BCFTOOLS_ANNOTATE {    
+process BCFTOOLS_ANNOTATE {
+    
+    conda "${moduleDir}/environment.yml"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/bcftools:1.18--h8b25389_0':
+        'biocontainers/bcftools:1.18--h8b25389_0' }"
+
     input:
     tuple val(meta), path (vcf_file)
     tuple val(meta), path (vep_tsv), path (vep_index)

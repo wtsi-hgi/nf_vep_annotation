@@ -13,7 +13,7 @@ process COMBINE_CSQS {
         """
         cat ${vep_outputs.join(' ')} | sort -k1,1V -k2,2n > combined_vep_csq.tsv
         bgzip combined_vep_csq.tsv
-        tabix combined_vep_csq.tsv.gz
+        tabix -s 1 -b 2 -e 2 combined_vep_csq.tsv.gz
         """
     stub:
         """
