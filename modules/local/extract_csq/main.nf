@@ -1,7 +1,7 @@
 process BCFTOOLS_EXTRACT_CSQ {    
     input:
     tuple val(meta), path (vep_vcf_file)
-   
+    val transcript_mode
 
     output:
     tuple val(meta), path("${vep_vcf_file.name.replaceAll(/\.vcf.*/, '.csq.tsv')}"), emit: vep_csq_tsv
@@ -12,8 +12,8 @@ process BCFTOOLS_EXTRACT_CSQ {
         def prefix = task.ext.prefix ?: "${meta.id}"
 
         """    
-        bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%CSQ\n' ${vep_vcf_file} > ${vep_vcf_file.baseName.replaceAll(/\.vcf.*/, '.csq.tsv')}
-
+        bcftools +split-vep -s ${transcript_mode} -f '%CHROM\\t%POS\\t%REF\\t%ALT\\t%CSQ\\t%Consequence\\n' ${vep_vcf_file} | cut -f1-5 > ${vep_vcf_file.baseName.replaceAll(/\.vcf.*/, '.csq.tsv')}
+        
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
             bcftools: \$(bcftools --version 2>&1 | head -n1 | sed 's/^.*bcftools //; s/ .*\$//')

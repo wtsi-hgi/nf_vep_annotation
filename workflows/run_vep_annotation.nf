@@ -107,15 +107,15 @@ workflow RUN_VEP_ANNOTATION{
     GET_CSQ_HEADER(vep_vcfs.first())
     header=GET_CSQ_HEADER.out.csq_header
 
-    BCFTOOLS_EXTRACT_CSQ(vep_vcfs)
+    BCFTOOLS_EXTRACT_CSQ(vep_vcfs, params.transcript_mode)
+    csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
+        meta, tsv_file -> [tsv_file]
+    }
     reference_fasta=channel.fromPath(params.ref_fasta)
     //vep_vcfs.view()
     //vep_vcfs.combine(reference_fasta).view()
     BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
     //combine VEP annotations from all shards
-    csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
-        meta, tsv_file -> [tsv_file]
-    }
     tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
         meta, tsf_file -> [tsf_file]
     }
