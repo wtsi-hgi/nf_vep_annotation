@@ -1,4 +1,8 @@
 process BCFTOOLS_EXTRACT_CSQ {    
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/bcftools%3A1.23.1--hb2cee57_0':
+        'biocontainers/bcftools:1.23.1--hb2cee57_0' }"
+
     input:
     tuple val(meta), path (vep_vcf_file)
     val transcript_mode

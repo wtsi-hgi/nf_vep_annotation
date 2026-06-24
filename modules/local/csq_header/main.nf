@@ -1,4 +1,9 @@
 process GET_CSQ_HEADER {    
+
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/bcftools%3A1.23.1--hb2cee57_0':
+        'biocontainers/bcftools:1.23.1--hb2cee57_0' }"
+
     input:
     tuple val(meta), path (vcf_file)
    

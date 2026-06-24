@@ -1,9 +1,13 @@
 process BCFTOOLS_ANNOTATE {
     
-    conda "${moduleDir}/environment.yml"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/bcftools:1.18--h8b25389_0':
-        'biocontainers/bcftools:1.18--h8b25389_0' }"
+        'https://depot.galaxyproject.org/singularity/bcftools%3A1.23.1--hb2cee57_0':
+        'biocontainers/bcftools:1.23.1--hb2cee57_0' }"
+
+    publishDir  path: "${params.publishdir}",
+                mode: "copy",
+                pattern: '*.vep.vcf.gz, *.vep.vcf.gz.tbi',
+                overwrite: "true"
 
     input:
     tuple val(meta), path (vcf_file)
