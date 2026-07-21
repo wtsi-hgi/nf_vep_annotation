@@ -21,7 +21,7 @@ process BCFTOOLS_ANNOTATE {
 
     script:
         def args = task.ext.args ?: ''
-        def prefix = task.ext.prefix ?: "${meta.id}"
+        //def prefix = task.ext.prefix ?: "${meta.id}"
         //def vcf_index = ${vcf_file.name.replaceAll(/\.vcf.gz/, '.vep.vcf.gz.tbi')}
         """
         bcftools annotate -a ${vep_tsv} -h ${header} -c CHROM,POS,REF,ALT,INFO/CSQ -Oz -o ${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')} ${vcf_file}
