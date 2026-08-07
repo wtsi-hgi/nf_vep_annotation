@@ -15,8 +15,8 @@ workflow RUN_VEP_ANNOTATION{
         file(params.publishdir).mkdirs()
     }
     // split VCF or not
-    if("${params.split_input}"=='true'){
-        vcf_file=channel.fromPath(params.vcf_infile)
+    if(params.split_input){
+        vcf_file=channel.fromPath(params.vcf_inputfile)
         vcf_input_file=vcf_file.map{vcf_file -> [[id:'input_vcf'], vcf_file]}
         //normalise VCFs
         NO_G_VCF(vcf_input_file)
@@ -24,8 +24,8 @@ workflow RUN_VEP_ANNOTATION{
         NORM_VCF(vcf_noG)
         vcf_norm=NORM_VCF.out.normolized_vcf
         //prepare normolized VCF if annotated VCF specified as an output
-        if ("${params.annotate_vcf}"=='true'){
-            if (params.left_align == 'true') {
+        if (params.annotate_vcf){
+            if (params.left_align) {
                 reference_fasta=channel.fromPath(params.ref_fasta)
                 NORM_VCF_WITH_G_LEFT_ALIGN(vcf_input_file, reference_fasta)
                 norm_vcf_with_g=NORM_VCF_WITH_G_LEFT_ALIGN.out.la_vcf.map{
@@ -39,7 +39,7 @@ workflow RUN_VEP_ANNOTATION{
             }
         }
         //split VCF using bed or not
-        if("${params.use_bed_to_split}"=='true'){
+        if(params.use_bed_to_split){
             //split VCF using bed
             bed_file=channel.fromPath(params.interval_bed)
             vcf_input = vcf_norm.map{
@@ -91,7 +91,7 @@ workflow RUN_VEP_ANNOTATION{
         vcf_noG=NO_G_VCF.out.no_g_vcf
 
         reference_fasta=channel.fromPath(params.ref_fasta)
-        if (params.left_align == 'true') {
+        if (params.left_align) {
             //left align indels in VEP annotated VCF files
             NORM_VCF_LEFT_ALIGN(vcf_noG, reference_fasta)
             shards=NORM_VCF_LEFT_ALIGN.out.la_vcf.merge(numbers).map{
@@ -104,7 +104,7 @@ workflow RUN_VEP_ANNOTATION{
             }
         }
         //prepare normolized VCF if annotated VCF specified as an output
-        if ("${params.annotate_vcf}"=='true'){
+        if (params.annotate_vcf){
             NORM_VCF_WITH_G(vcf_input)
             norm_vcf_with_g=NORM_VCF_WITH_G.out.normolized_vcf.merge(numbers).map{
                 meta, vcf_file, numbers -> [[id:'norm_vcf_with_genomes_'+numbers], vcf_file]
@@ -141,14 +141,14 @@ workflow RUN_VEP_ANNOTATION{
     BGZIP(COMBINE_CSQS.out.vep_annotations)
 
     //make VEP annotation as a new INFO field in the original VCF file
-    if ("${params.annotate_vcf}"=='true'){
+    if (params.annotate_vcf){
         csq=BGZIP.out.vep_annotations_gziped
         BCFTOOLS_ANNOTATE(norm_vcf_with_g, csq, header)
     }
 
     reference_fasta=channel.fromPath(params.ref_fasta)
     //make tsv files for hail qc
-    if ("${params.hail_tsv}"=='true'){
+    if (params.hail_tsv){
         BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
         //combine VEP annotations from all shards
         tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
