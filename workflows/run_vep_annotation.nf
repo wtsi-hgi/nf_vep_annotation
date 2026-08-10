@@ -14,6 +14,12 @@ workflow RUN_VEP_ANNOTATION{
     if (!file(params.publishdir).exists()) {
         file(params.publishdir).mkdirs()
     }
+
+    def vep_options = """--dir_cache ${params.vep_data_dir} \
+        --assembly ${params.assembly} \
+        --fasta ${params.vep_fasta} \
+        --dir_plugins ${params.vep_plugins_dir} \
+        ${params.plugins_to_use}"""
     // split VCF or not
     if(params.split_input){
         vcf_file=channel.fromPath(params.vcf_inputfile)
@@ -112,7 +118,7 @@ workflow RUN_VEP_ANNOTATION{
         }
     }
     //run VEP
-    RUN_VEP(shards, params.vep_options)
+    RUN_VEP(shards, vep_options)
     vep_vcfs=RUN_VEP.out.vep_vcf.merge(numbers).map{
         meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
     }
