@@ -15,6 +15,7 @@ workflow RUN_VEP_ANNOTATION{
         file(params.publishdir).mkdirs()
     }
 
+    log.info "vep_data_dir=${params.vep_data_dir} assembly=${params.assembly} vep_fasta=${params.vep_fasta} vep_plugins_dir=${params.vep_plugins_dir} ref_fasta=${params.ref_fasta}"
     def vep_options = """--dir_cache ${params.vep_data_dir} \
         --assembly ${params.assembly} \
         --fasta ${params.vep_fasta} \
