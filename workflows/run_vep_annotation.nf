@@ -19,8 +19,7 @@ workflow RUN_VEP_ANNOTATION{
     def vep_options = """--dir_cache ${params.vep_data_dir} \
         --assembly ${params.assembly} \
         --fasta ${params.vep_fasta} \
-        --dir_plugins ${params.vep_plugins_dir} \
-        ${params.plugins_to_use}"""
+        --dir_plugins ${params.vep_plugins_dir} ${params.plugins_to_use}"""
     // split VCF or not
     if(params.split_input){
         vcf_file=channel.fromPath(params.vcf_inputfile)
@@ -81,7 +80,7 @@ workflow RUN_VEP_ANNOTATION{
 
         vcf_input_file = vcf_files
             .map { file ->
-                def id = file.getSimpleName().replaceAll(/\.vcf$/, '')
+                def id = file.getSimpleName()
                 def meta = [
                     id: id
                 ]
