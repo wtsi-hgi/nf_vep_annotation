@@ -14,164 +14,113 @@ workflow RUN_VEP_ANNOTATION{
     if (!file(params.publishdir).exists()) {
         file(params.publishdir).mkdirs()
     }
-
-    log.info "vep_data_dir=${params.vep_data_dir} assembly=${params.assembly} vep_fasta=${params.vep_fasta} vep_plugins_dir=${params.vep_plugins_dir} ref_fasta=${params.ref_fasta}"
-    def vep_options = """--dir_cache ${params.vep_data_dir} \
-        --assembly ${params.assembly} \
-        --fasta ${params.vep_fasta} \
-        --dir_plugins ${params.vep_plugins_dir} ${params.plugins_to_use}"""
-    // split VCF or not
-    if(params.split_input){
-        vcf_file=channel.fromPath(params.vcf_inputfile)
-        vcf_input_file=vcf_file.map{vcf_file -> [[id:'input_vcf'], vcf_file]}
-        //normalise VCFs
-        NO_G_VCF(vcf_input_file)
-        vcf_noG=NO_G_VCF.out.no_g_vcf
-        NORM_VCF(vcf_noG)
-        vcf_norm=NORM_VCF.out.normolized_vcf
-        //prepare normolized VCF if annotated VCF specified as an output
-        if (params.annotate_vcf){
-            if (params.left_align) {
-                reference_fasta=channel.fromPath(params.ref_fasta)
-                NORM_VCF_WITH_G_LEFT_ALIGN(vcf_input_file, reference_fasta)
-                norm_vcf_with_g=NORM_VCF_WITH_G_LEFT_ALIGN.out.la_vcf.map{
-                    meta, vcf_norm -> [[id:'norm_left_align_vcf_with_genomes'], vcf_norm]
-                }
-            }else{
-                NORM_VCF_WITH_G(vcf_input_file)
-                norm_vcf_with_g=NORM_VCF_WITH_G.out.normolized_vcf.map{
-                    meta, vcf_norm -> [[id:'norm_vcf_with_genomes'], vcf_norm]
-                }
+    if (file(params.input).exists()){
+        if (file(params.input).isFile()){//one VCF file as an input
+            vcf_input=channel.fromPath(params.input).map{vcf_file -> [[id:'input_vcf'], vcf_file]}
+        }else if (file(params.input).isDirectory()){//multiple VCF files as an input
+            vcf_input = channel.fromPath("${params.input}/*.{vcf,vcf.gz,vcf.bgz,bcf,bcf.gz,bcf.bgz}")
+                .map { vcf_file ->
+                    def id = vcf_file.getName().replaceAll(/\.(vcf|bcf)(\.gz|\.bgz)?$/, '')
+                    [[id: id], vcf_file]
             }
+        }else{
+            log.error "Input path is neither a file nor a directory: ${params.input}"
         }
-        //split VCF using bed or not
-        if(params.use_bed_to_split){
-            //split VCF using bed
-            bed_file=channel.fromPath(params.interval_bed)
-            vcf_input = vcf_norm.map{
-            vcf_norm -> [[id:'split_vcf_using_bed'], vcf_norm]
-            }
-            SPLIT_VCF_BED(vcf_input, bed_file)
-            //prepare VCF chunks for VEP annoation
-            vcf_chunks=SPLIT_VCF_BED.out.splited_vcfs.map{
-            meta, splited_vcfs -> [splited_vcfs]
-            }
-            //ßvcf_chunks.view()
-        }else{//change vcf_file here into NO_G_VCF
-            //split one VCF into N chuks
-            number_of_chunks=channel.value(params.number_of_chunks)
-            vcf_input = number_of_chunks.combine(vcf_norm).map{
-            number_of_chunks, meta, vcf_norm -> [[id:'split_vcf_to_' + number_of_chunks + '_chunks'], vcf_norm]
-            }
-            SPLIT_VCF(vcf_input, number_of_chunks)
-            //prepare VCF chunks for VEP annoation
-            vcf_chunks=SPLIT_VCF.out.splited_vcfs.map{
-            meta, splited_vcfs -> [splited_vcfs]
-            }
-        }
-        //make map for vep annotation process
-        numbers=vcf_chunks.flatten().collect().map { it.size() }.map { 1..it }.flatten()
-        shards=vcf_chunks.flatten().merge(numbers).map{
-        vcf_chunks, numbers -> [[id:'vep_annotation_'+numbers], vcf_chunks]
-        }
-    }else{
-        //work with VCF shards
-        vcf_files = channel.fromPath("$params.vcf_in/*.vcf.gz")
-
-        vcf_input_file = vcf_files
-            .map { file ->
-                def id = file.getSimpleName()
-                def meta = [
-                    id: id
-                ]
-                tuple(meta, file)
-            }
-
-        numbers=vcf_files.collect().map { it.size() }.map { 1..it }.flatten()
-        vcf_input = vcf_files.merge(numbers).map{
-        vcf_file, numbers -> [[id:'vcf_preprocess_'+numbers], vcf_file]
-        }
-        //vcf_input_file=vcf_file.map{vcf_file -> [[id:'input_vcf'], vcf_file]}
-        //normalise VCFs
+        //remove genotypes from VCF files and normalize VCF files
         NO_G_VCF(vcf_input)
         vcf_noG=NO_G_VCF.out.no_g_vcf
 
+        //normalize vcf files with or without left align indels
         reference_fasta=channel.fromPath(params.ref_fasta)
-        if (params.left_align) {
-            //left align indels in VEP annotated VCF files
-            NORM_VCF_LEFT_ALIGN(vcf_noG, reference_fasta)
-            shards=NORM_VCF_LEFT_ALIGN.out.la_vcf.merge(numbers).map{
-                meta, vcf_file, numbers -> [[id:'vep_annotation_'+numbers], vcf_file]
-            }
-        }else{
+        if (params.left_align) {//left align indels in VEP annotation. Required for hail file
+            NORM_VCF_LEFT_ALIGN(vcf_noG.combine(reference_fasta))
+            vcf_norm=NORM_VCF_LEFT_ALIGN.out.la_vcf
+        } else {//normalize VCF files without left align indels
             NORM_VCF(vcf_noG)
-            shards=NORM_VCF.out.normolized_vcf.merge(numbers).map{
-                meta, vcf_file, numbers -> [[id:'vep_annotation_'+numbers], vcf_file]
-            }
+            vcf_norm=NORM_VCF.out.normolized_vcf
         }
+
         //prepare normolized VCF if annotated VCF specified as an output
         if (params.annotate_vcf){
-            NORM_VCF_WITH_G(vcf_input)
-            norm_vcf_with_g=NORM_VCF_WITH_G.out.normolized_vcf.merge(numbers).map{
-                meta, vcf_file, numbers -> [[id:'norm_vcf_with_genomes_'+numbers], vcf_file]
+            if (params.left_align) {//left align indels in VEP annotated VCF files
+                reference_fasta=channel.fromPath(params.ref_fasta)
+                NORM_VCF_WITH_G_LEFT_ALIGN(vcf_input.combine(reference_fasta))
+                norm_vcf_with_g=NORM_VCF_WITH_G_LEFT_ALIGN.out.la_vcf
+            }else{//normalize VCF files without left align indels
+                NORM_VCF_WITH_G(vcf_input)
+                norm_vcf_with_g=NORM_VCF_WITH_G.out.normolized_vcf
             }
         }
-    }
-    //run VEP
-    RUN_VEP(shards, vep_options)
-    vep_vcfs=RUN_VEP.out.vep_vcf.merge(numbers).map{
-        meta, vep_vcf, numbers -> [[id:'annotation_extraction_'+numbers], vep_vcf]
-    }
 
-    //extract CSQ header from the first VEP annotated VCF file
-    GET_CSQ_HEADER(vep_vcfs.first())
-    header=GET_CSQ_HEADER.out.csq_header
-
-    //extract VEP annotation and save as a TSV file
-    BCFTOOLS_EXTRACT_CSQ(vep_vcfs, params.transcript_mode)
-    csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
-        meta, tsv_file -> [tsv_file]
-    }
-    csq_tsvs=csq_tsvs.collect().map{
-        tsv_files -> [[id:'annotation_concatination'], tsv_files]
-    }
-
-    //csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv
-    //    .map{meta, tsv_file -> [tsv_file]}
-    //    .toSortedList()
-    //    .map { files ->
-    //    [[id: 'annotation_concatination'], files]
-    //}
-    //csq_tsvs.view()
-    COMBINE_CSQS(csq_tsvs)
-    BGZIP(COMBINE_CSQS.out.vep_annotations)
-
-    //make VEP annotation as a new INFO field in the original VCF file
-    if (params.annotate_vcf){
-        csq=BGZIP.out.vep_annotations_gziped
-        BCFTOOLS_ANNOTATE(norm_vcf_with_g, csq, header)
-    }
-
-    reference_fasta=channel.fromPath(params.ref_fasta)
-    //make tsv files for hail qc
-    if (params.hail_tsv){
-        BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
-        //combine VEP annotations from all shards
-        tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
-            meta, tsf_file -> [tsf_file]
+        //split VCF files into N chunks for faster VEP annotation
+        if(params.split_input){
+            if(params.use_bed_to_split){
+                bed_file=channel.fromPath(params.interval_bed)
+                SPLIT_VCF_BED(vcf_input, bed_file)
+                vcf_chunks=SPLIT_VCF_BED.out.splited_vcfs.flatMap { meta, files ->
+                    files.collect { file -> [meta, file] }
+                }
+            }else{ //split VCFs into N chunks
+                number_of_chunks=channel.value(params.number_of_chunks)
+                SPLIT_VCF(vcf_norm, number_of_chunks)
+                vcf_chunks=SPLIT_VCF.out.splited_vcfs.flatMap { meta, files ->
+                    files.collect { file -> [meta, file] }
+                }
+            }
+            vcf_channel=vcf_chunks
+        }else{
+            vcf_channel=vcf_norm
         }
-        vep_tsvs=tsvs.collect().map{
-            tsf_files -> [[id:'annotation_concatination'], tsf_files]
+        //run VEP
+        def vep_options = """--dir_cache ${params.vep_data_dir} \
+            --assembly ${params.assembly} \
+            --fasta ${params.vep_fasta} \
+            --dir_plugins ${params.vep_plugins_dir} ${params.plugins_to_use}"""
+        RUN_VEP(vcf_channel, vep_options)
+        vep_vcfs=RUN_VEP.out.vep_vcf
+
+        //extract CSQ header from the first VEP annotated VCF file
+        if (params.annotate_vcf || params.hail_tsv){
+            GET_CSQ_HEADER(vep_vcfs.first())
+            header=GET_CSQ_HEADER.out.csq_header
         }
 
-        //vep_tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv
-        //    .map{meta, tsv_file -> [tsv_file]}
-        //    .toSortedList()
-        //    .map { files ->
-        //    [[id: 'annotation_concatination'], files]
-        //}
+        //extract VEP annotation and save as a TSV file
+        BCFTOOLS_EXTRACT_CSQ(vep_vcfs, params.transcript_mode)
+        //combine by meta id. turned off
+        //csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.groupTuple()
+        csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
+            meta, tsv_file -> [tsv_file]
+        }
+        csq_tsvs=csq_tsvs.collect().map{
+            tsv_files -> [[id:'annotation_concatination'], tsv_files]
+        }
 
-        COMBINE_TSVS(vep_tsvs)
-        BGZIP2(COMBINE_TSVS.out.vep_annotations)
+        COMBINE_CSQS(csq_tsvs)
+        BGZIP(COMBINE_CSQS.out.vep_annotations)
+
+        //make VEP annotation as a new INFO field in the original VCF file
+        if (params.annotate_vcf){
+            csq=BGZIP.out.vep_annotations_gziped
+            BCFTOOLS_ANNOTATE(norm_vcf_with_g, csq, header)
+        }
+
+        reference_fasta=channel.fromPath(params.ref_fasta)
+        //make tsv files for hail qc
+        if (params.hail_tsv){
+            BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
+            //combine VEP annotations from all shards
+            tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
+                meta, tsf_file -> [tsf_file]
+            }
+            vep_tsvs=tsvs.collect().map{
+                tsf_files -> [[id:'annotation_concatination'], tsf_files]
+            }
+
+            COMBINE_TSVS(vep_tsvs)
+            BGZIP2(COMBINE_TSVS.out.vep_annotations)
+        }
+    }else{
+        log.error "Input path doesn't exist: ${params.input}"
     }
 }

@@ -10,13 +10,13 @@ process BCFTOOLS_ANNOTATE {
                 overwrite: "true"
 
     input:
-    tuple val(meta), path (vcf_file)
-    tuple val(meta), path (vep_tsv), path (vep_index)
-    tuple val(meta), path(header)
+    tuple val(meta1), path (vcf_file)
+    tuple val(meta2), path (vep_tsv), path (vep_index)
+    tuple val(meta3), path(header)
    
 
     output:
-    tuple val(meta), path("${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}"), path("${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}.tbi"), emit: annotated_vcf
+    tuple val(meta1), path("${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}"), path("${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}.tbi"), emit: annotated_vcf
     path "versions.yml"                     , emit: versions
 
     script:

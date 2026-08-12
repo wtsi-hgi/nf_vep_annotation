@@ -38,8 +38,7 @@ process NORM_VCF_LEFT_ALIGN {
         'biocontainers/bcftools:1.23.1--hb2cee57_0' }"
 
     input:
-    tuple val(meta), path (vcf_file)
-    path reference_fasta
+    tuple val(meta), path (vcf_file), path (reference_fasta)
 
     output:
     tuple val(meta), path("${vcf_file.baseName}.normalized.vcf.gz"), emit: la_vcf
@@ -59,7 +58,7 @@ process NORM_VCF_LEFT_ALIGN {
         """
     stub:
         """
-        touch ${vep_vcf_file.name.replaceAll(/\.vcf.*/, '.la.csq.tsv')}
+        touch ${vcf_file.baseName}.normalized.vcf.gz
         touch versions.yml
         """
 }
