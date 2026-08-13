@@ -5,15 +5,23 @@ include {SPLIT_VCF_BED} from '../modules/local/split_vcf_bed/main'
 include { BCFTOOLS_SPLIT_VEP } from '../modules/local/bcftools_split_vep/main'
 include { COMBINE_TSVS } from '../modules/local/combine_tsvs/main'
 include { BCFTOOLS_EXTRACT_CSQ } from '../modules/local/extract_csq/main'
-include { COMBINE_CSQS } from '../modules/local/combine_csqs/main'
+include { COMBINE_CSQS; COMBINE_CSQS as COMBINE_ALL_CSQS } from '../modules/local/combine_csqs/main'
 include { GET_CSQ_HEADER } from '../modules/local/csq_header/main'
 include { BCFTOOLS_ANNOTATE } from '../modules/local/bcftools_annotation/main'
-include {BGZIP; BGZIP as BGZIP2} from '../modules/local/bgzip/main'
+include {BGZIP; BGZIP as BGZIP2; BGZIP as BGZIP3} from '../modules/local/bgzip/main'
 workflow RUN_VEP_ANNOTATION{
     // Create the output directory if it doesn't exist
     if (!file(params.publishdir).exists()) {
         file(params.publishdir).mkdirs()
     }
+
+    if (params.hail_tsv && !params.left_align) {
+        log.error "To generate Hail TSV, left alignment is required!"
+    }
+    if (params.split_input && params.number_of_chunks < 2) {
+        log.error "To split VCF into chunks, number_of_chunks must be greater than 1!"
+    }
+
     if (file(params.input).exists()){
         if (file(params.input).isFile()){//one VCF file as an input
             vcf_input=channel.fromPath(params.input).map{vcf_file -> [[id:'input_vcf'], vcf_file]}
@@ -54,18 +62,10 @@ workflow RUN_VEP_ANNOTATION{
 
         //split VCF files into N chunks for faster VEP annotation
         if(params.split_input){
-            if(params.use_bed_to_split){
-                bed_file=channel.fromPath(params.interval_bed)
-                SPLIT_VCF_BED(vcf_input, bed_file)
-                vcf_chunks=SPLIT_VCF_BED.out.splited_vcfs.flatMap { meta, files ->
-                    files.collect { file -> [meta, file] }
-                }
-            }else{ //split VCFs into N chunks
-                number_of_chunks=channel.value(params.number_of_chunks)
-                SPLIT_VCF(vcf_norm, number_of_chunks)
-                vcf_chunks=SPLIT_VCF.out.splited_vcfs.flatMap { meta, files ->
-                    files.collect { file -> [meta, file] }
-                }
+            number_of_chunks=channel.value(params.number_of_chunks)
+            SPLIT_VCF(vcf_norm, number_of_chunks)
+            vcf_chunks=SPLIT_VCF.out.splited_vcfs.flatMap { meta, files ->
+                files.collect { file -> [meta, file] }
             }
             vcf_channel=vcf_chunks
         }else{
@@ -88,21 +88,27 @@ workflow RUN_VEP_ANNOTATION{
         //extract VEP annotation and save as a TSV file
         BCFTOOLS_EXTRACT_CSQ(vep_vcfs, params.transcript_mode)
         //combine by meta id. turned off
-        //csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.groupTuple()
-        csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
-            meta, tsv_file -> [tsv_file]
-        }
-        csq_tsvs=csq_tsvs.collect().map{
-            tsv_files -> [[id:'annotation_concatination'], tsv_files]
-        }
+        csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.groupTuple()
 
         COMBINE_CSQS(csq_tsvs)
         BGZIP(COMBINE_CSQS.out.vep_annotations)
 
+        if (params.csq_tsv){}
+            all_csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
+                meta, tsv_file -> [tsv_file]
+            }
+            all_csq_tsvs=all_csq_tsvs.collect().map{
+                tsv_files -> [[id:'annotation_concatination'], tsv_files]
+            }
+            COMBINE_ALL_CSQS(all_csq_tsvs)
+            BGZIP2(COMBINE_ALL_CSQS.out.vep_annotations)
+        }
+
         //make VEP annotation as a new INFO field in the original VCF file
         if (params.annotate_vcf){
             csq=BGZIP.out.vep_annotations_gziped
-            BCFTOOLS_ANNOTATE(norm_vcf_with_g, csq, header)
+            norm_vcf_with_g_and_csq=csq.combine(csq, by: 0)
+            BCFTOOLS_ANNOTATE(norm_vcf_with_g_and_csq, header)
         }
 
         reference_fasta=channel.fromPath(params.ref_fasta)
@@ -118,7 +124,7 @@ workflow RUN_VEP_ANNOTATION{
             }
 
             COMBINE_TSVS(vep_tsvs)
-            BGZIP2(COMBINE_TSVS.out.vep_annotations)
+            BGZIP3(COMBINE_TSVS.out.vep_annotations)
         }
     }else{
         log.error "Input path doesn't exist: ${params.input}"

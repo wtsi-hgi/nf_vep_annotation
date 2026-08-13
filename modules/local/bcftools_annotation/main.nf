@@ -10,9 +10,8 @@ process BCFTOOLS_ANNOTATE {
                 overwrite: "true"
 
     input:
-    tuple val(meta1), path (vcf_file)
-    tuple val(meta2), path (vep_tsv), path (vep_index)
-    tuple val(meta3), path(header)
+    tuple val(meta1), path (vcf_file), path (vep_tsv), path (vep_index)
+    tuple val(meta2), path(header)
    
 
     output:

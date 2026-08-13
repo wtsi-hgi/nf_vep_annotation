@@ -12,7 +12,7 @@ process BGZIP {
     tuple val(meta), path (vep_tsv)
 
     output:
-    tuple val ("combined gziped vep annotations"), path ("${vep_tsv}.gz"), path("${vep_tsv}.gz.tbi") , emit: vep_annotations_gziped
+    tuple val (meta), path ("${vep_tsv}.gz"), path("${vep_tsv}.gz.tbi") , emit: vep_annotations_gziped
     script:
         """
         bgzip ${vep_tsv}
