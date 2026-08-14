@@ -114,7 +114,12 @@ workflow RUN_VEP_ANNOTATION{
                 tsv_files -> [[id:'annotation_concatination'], tsv_files]
             }
             COMBINE_ALL_CSQS(all_csq_tsvs)
-            BGZIP2(COMBINE_ALL_CSQS.out.vep_annotations)
+            all_csqs = COMBINE_ALL_CSQS.out.vep_annotations.map { meta, file ->
+                def target = file.resolveSibling('CSQ.tsv')
+                file.copyTo(target)
+                [meta, target]
+            }
+            BGZIP2(all_csqs)
         }
 
         //make tsv files for hail qc

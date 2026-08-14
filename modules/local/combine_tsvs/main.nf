@@ -11,7 +11,7 @@ process COMBINE_TSVS {
     tuple val(meta), path (vep_outputs)
 
     output:
-    tuple val("combined vep annotations"), path("combined_vep_output_for_hail_qc.tsv") , emit: vep_annotations
+    tuple val(meta), path("combined_vep_output_for_hail_qc.tsv") , emit: vep_annotations
 
     script:
         """

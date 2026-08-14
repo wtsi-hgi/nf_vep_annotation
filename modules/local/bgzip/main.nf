@@ -4,10 +4,10 @@ process BGZIP {
         'https://depot.galaxyproject.org/singularity/htslib%3A1.23.1--h633afcb_0':
         'biocontainers/htslib:1.23.1--h633afcb_0' }"
 
-    //publishDir  path: "${params.publishdir}",
-    //            mode: "copy",
-    //            overwrite: "true"
- 
+    publishDir  path: "${params.publishdir}",
+                mode: "copy",
+                overwrite: "true"
+                enabled: { meta.id == "annotation_concatination" }
     input:
     tuple val(meta), path (vep_tsv)
 
