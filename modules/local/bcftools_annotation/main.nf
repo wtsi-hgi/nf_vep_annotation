@@ -6,7 +6,7 @@ process BCFTOOLS_ANNOTATE {
 
     publishDir  path: "${params.publishdir}",
                 mode: "copy",
-                pattern: '*.vep.vcf.gz, *.vep.vcf.gz.tbi',
+                pattern: '*.vep.vcf.gz*',
                 overwrite: "true"
 
     input:
@@ -15,7 +15,7 @@ process BCFTOOLS_ANNOTATE {
    
 
     output:
-    tuple val(meta1), path("${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}"), path("${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}.tbi"), emit: annotated_vcf
+    tuple val(meta1), path("${vcf_file.name.replaceAll(/\.normalized\.vcf/, '.vep.vcf')}"), path("${vcf_file.name.replaceAll(/\.normalized\.vcf/, '.vep.vcf')}.tbi"), emit: annotated_vcf
     path "versions.yml"                     , emit: versions
 
     script:
@@ -23,8 +23,8 @@ process BCFTOOLS_ANNOTATE {
         //def prefix = task.ext.prefix ?: "${meta.id}"
         //def vcf_index = ${vcf_file.name.replaceAll(/\.vcf.gz/, '.vep.vcf.gz.tbi')}
         """
-        bcftools annotate -a ${vep_tsv} -h ${header} -c CHROM,POS,REF,ALT,INFO/CSQ -Oz -o ${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')} ${vcf_file}
-        bcftools index -t ${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}
+        bcftools annotate -a ${vep_tsv} -h ${header} -c CHROM,POS,REF,ALT,INFO/CSQ -Oz -o ${vcf_file.name.replaceAll(/\.normalized\.vcf/, '.vep.vcf')} ${vcf_file}
+        bcftools index -t ${vcf_file.name.replaceAll(/\.normalized\.vcf/, '.vep.vcf')}
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
             bcftools: \$(bcftools --version 2>&1 | head -n1 | sed 's/^.*bcftools //; s/ .*\$//')
@@ -32,8 +32,8 @@ process BCFTOOLS_ANNOTATE {
         """
     stub:
         """
-        touch ${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}
-        touch ${vcf_file.name.replaceAll(/\.vcf/, '.vep.vcf')}.tbi
+        touch ${vcf_file.name.replaceAll(/\.normalized\.vcf/, '.vep.vcf')}
+        touch ${vcf_file.name.replaceAll(/\.normalized\.vcf/, '.vep.vcf')}.tbi
         touch versions.yml
         """
 }

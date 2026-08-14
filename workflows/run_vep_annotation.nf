@@ -93,7 +93,7 @@ workflow RUN_VEP_ANNOTATION{
         COMBINE_CSQS(csq_tsvs)
         BGZIP(COMBINE_CSQS.out.vep_annotations)
 
-        if (params.csq_tsv){}
+        if (params.csq_tsv){
             all_csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
                 meta, tsv_file -> [tsv_file]
             }
@@ -107,7 +107,7 @@ workflow RUN_VEP_ANNOTATION{
         //make VEP annotation as a new INFO field in the original VCF file
         if (params.annotate_vcf){
             csq=BGZIP.out.vep_annotations_gziped
-            norm_vcf_with_g_and_csq=csq.combine(csq, by: 0)
+            norm_vcf_with_g_and_csq=norm_vcf_with_g.combine(csq, by: 0)
             BCFTOOLS_ANNOTATE(norm_vcf_with_g_and_csq, header)
         }
 

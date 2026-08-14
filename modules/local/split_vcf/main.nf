@@ -8,7 +8,7 @@ process NORM_VCF {
     tuple val(meta), path (vcf_file)
 
     output:
-    tuple val(meta), path ("${prefix}.normalized.vcf.gz"), emit: normolized_vcf
+    tuple val(meta), path ("*.normalized.vcf.gz"), emit: normolized_vcf
     path "versions.yml"                     , emit: versions
 
     script:
@@ -41,7 +41,7 @@ process NORM_VCF_LEFT_ALIGN {
     tuple val(meta), path (vcf_file), path (reference_fasta)
 
     output:
-    tuple val(meta), path("${prefix}.normalized.vcf.gz"), emit: la_vcf
+    tuple val(meta), path("*.normalized.vcf.gz"), emit: la_vcf
     path "versions.yml", emit: versions
 
     script:
@@ -74,7 +74,7 @@ process NO_G_VCF {
     tuple val(meta), path(vcf_file)
 
     output:
-    tuple val(meta), path ("${prefix}.noG.vcf.gz"), emit: no_g_vcf
+    tuple val(meta), path ("*.noG.vcf.gz"), emit: no_g_vcf
     path "versions.yml"                     , emit: versions
 
     script:
