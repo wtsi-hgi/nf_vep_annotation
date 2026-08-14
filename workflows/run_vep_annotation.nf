@@ -21,6 +21,9 @@ workflow RUN_VEP_ANNOTATION{
     if (params.split_input && params.number_of_chunks < 2) {
         log.error "To split VCF into chunks, number_of_chunks must be greater than 1!"
     }
+    if (params.left_align && (!file(params.reference_fasta).exists() || !file(params.reference_fasta).isFile())) {
+        log.error "Reference FASTA file is required for left alignment!"
+    }
 
     if (file(params.input).exists()){
         if (file(params.input).isFile()){//one VCF file as an input
@@ -90,8 +93,18 @@ workflow RUN_VEP_ANNOTATION{
         //combine by meta id. turned off
         csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.groupTuple()
 
-        COMBINE_CSQS(csq_tsvs)
-        BGZIP(COMBINE_CSQS.out.vep_annotations)
+        //make VEP annotation as a new INFO field in the original VCF file
+        if (params.annotate_vcf){
+            if(params.split_input){
+                COMBINE_CSQS(csq_tsvs)
+                BGZIP(COMBINE_CSQS.out.vep_annotations)
+            }else{
+                BGZIP(csq_tsvs)
+            }
+            csq=BGZIP.out.vep_annotations_gziped
+            norm_vcf_with_g_and_csq=norm_vcf_with_g.combine(csq, by: 0)
+            BCFTOOLS_ANNOTATE(norm_vcf_with_g_and_csq, header)
+        }
 
         if (params.csq_tsv){
             all_csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
@@ -104,14 +117,6 @@ workflow RUN_VEP_ANNOTATION{
             BGZIP2(COMBINE_ALL_CSQS.out.vep_annotations)
         }
 
-        //make VEP annotation as a new INFO field in the original VCF file
-        if (params.annotate_vcf){
-            csq=BGZIP.out.vep_annotations_gziped
-            norm_vcf_with_g_and_csq=norm_vcf_with_g.combine(csq, by: 0)
-            BCFTOOLS_ANNOTATE(norm_vcf_with_g_and_csq, header)
-        }
-
-        reference_fasta=channel.fromPath(params.ref_fasta)
         //make tsv files for hail qc
         if (params.hail_tsv){
             BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
