@@ -107,17 +107,26 @@ workflow RUN_VEP_ANNOTATION{
         }
 
         if (params.csq_tsv){
-            all_csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
-                meta, tsv_file -> [tsv_file]
-            }
-            all_csq_tsvs=all_csq_tsvs.collect().map{
-                tsv_files -> [[id:'annotation_concatination'], tsv_files]
-            }
-            COMBINE_ALL_CSQS(all_csq_tsvs)
-            all_csqs = COMBINE_ALL_CSQS.out.vep_annotations.map { meta, file ->
-                def target = file.resolveSibling('CSQ.tsv')
-                file.copyTo(target)
-                [meta, target]
+            if (file(params.input).isDirectory() || params.split_input){
+
+                all_csq_tsvs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map{
+                    meta, tsv_file -> [tsv_file]
+                }
+                all_csq_tsvs=all_csq_tsvs.collect().map{
+                    tsv_files -> [[id:'annotation_concatination'], tsv_files]
+                }
+                COMBINE_ALL_CSQS(all_csq_tsvs)
+                all_csqs = COMBINE_ALL_CSQS.out.vep_annotations.map { meta, file ->
+                    def target = file.resolveSibling('CSQ.tsv')
+                    file.copyTo(target)
+                    [meta, target]
+                }
+            }else{
+                all_csqs=BCFTOOLS_EXTRACT_CSQ.out.vep_csq_tsv.map { meta, file ->
+                    def target = file.resolveSibling('CSQ.tsv')
+                    file.copyTo(target)
+                    [[id:'annotation_concatination'], target]
+                }
             }
             BGZIP2(all_csqs)
         }
