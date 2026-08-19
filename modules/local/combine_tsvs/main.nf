@@ -11,14 +11,14 @@ process COMBINE_TSVS {
     tuple val(meta), path (vep_outputs)
 
     output:
-    tuple val(meta), path("combined_vep_output_for_hail_qc.tsv") , emit: vep_annotations
+    tuple val(meta), path("WxS_QC_CSQ.tsv") , emit: vep_annotations
 
     script:
         """
-        cat ${vep_outputs.join(' ')} | sort -k1,1V -k2,2n > combined_vep_output_for_hail_qc.tsv
+        cat ${vep_outputs.join(' ')} | sort -k1,1V -k2,2n > WxS_QC_CSQ.tsv
         """
     stub:
         """
-        touch combined_vep_output_for_hail_qc.tsv
+        touch WxS_QC_CSQ.tsv
         """
 }

@@ -6,8 +6,8 @@ process BGZIP {
 
     publishDir  path: "${params.publishdir}",
                 mode: "copy",
-                overwrite: "true"
-                enabled: { meta.id == "annotation_concatination" }
+                overwrite: "true",
+                pattern: '{CSQ.tsv.gz*,WxS_QC_CSQ.tsv.gz*}'
     input:
     tuple val(meta), path (vep_tsv)
 

@@ -21,7 +21,7 @@ workflow RUN_VEP_ANNOTATION{
     if (params.split_input && params.number_of_chunks < 2) {
         log.error "To split VCF into chunks, number_of_chunks must be greater than 1!"
     }
-    if (params.left_align && (!file(params.reference_fasta).exists() || !file(params.reference_fasta).isFile())) {
+    if (params.left_align && (!file(params.ref_fasta).exists() || !file(params.ref_fasta).isFile())) {
         log.error "Reference FASTA file is required for left alignment!"
     }
 
@@ -123,8 +123,8 @@ workflow RUN_VEP_ANNOTATION{
         }
 
         //make tsv files for hail qc
-        if (params.hail_tsv){
-            BCFTOOLS_SPLIT_VEP(vep_vcfs.combine(reference_fasta))
+        if (params.hail_tsv && params.left_align){
+            BCFTOOLS_SPLIT_VEP(vep_vcfs)
             //combine VEP annotations from all shards
             tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
                 meta, tsf_file -> [tsf_file]
@@ -132,9 +132,17 @@ workflow RUN_VEP_ANNOTATION{
             vep_tsvs=tsvs.collect().map{
                 tsf_files -> [[id:'annotation_concatination'], tsf_files]
             }
-
-            COMBINE_TSVS(vep_tsvs)
-            BGZIP3(COMBINE_TSVS.out.vep_annotations)
+            if (file(params.input).isDirectory() || params.split_input){
+                COMBINE_TSVS(vep_tsvs)
+                hail_csq_tsv=COMBINE_TSVS.out.vep_annotations
+            }else{
+                hail_csq_tsv=vep_tsvs.map { meta, file ->
+                    def target = file.resolveSibling('WxS_QC_CSQ.tsv')
+                    file.copyTo(target)
+                    [meta, target]
+                }
+            }
+            BGZIP3(hail_csq_tsv)
         }
     }else{
         log.error "Input path doesn't exist: ${params.input}"
