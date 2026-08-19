@@ -145,10 +145,10 @@ workflow RUN_VEP_ANNOTATION{
                 COMBINE_TSVS(vep_tsvs)
                 hail_csq_tsv=COMBINE_TSVS.out.vep_annotations
             }else{
-                hail_csq_tsv=vep_tsvs.map { meta, file ->
+                hail_csq_tsv=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map { meta, file ->
                     def target = file.resolveSibling('WxS_QC_CSQ.tsv')
                     file.copyTo(target)
-                    [meta, target]
+                    [[id:'annotation_concatination'], target]
                 }
             }
             BGZIP3(hail_csq_tsv)
