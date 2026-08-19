@@ -16,13 +16,16 @@ workflow RUN_VEP_ANNOTATION{
     }
 
     if (params.hail_tsv && !params.left_align) {
-        log.error "To generate Hail TSV, left alignment is required!"
+        error "To generate Hail TSV, left alignment is required!"
     }
-    if (params.split_input && params.number_of_chunks < 2) {
-        log.error "To split VCF into chunks, number_of_chunks must be greater than 1!"
+    if (params.split_input && !(params.number_of_chunks.toString() ==~ /^[1-9][0-9]*$/)) {
+        error "number_of_chunks must be a positive integer, got: ${params.number_of_chunks}"
+    }
+    if (params.split_input && params.number_of_chunks < 2 ) {
+        error "To split VCF into chunks, number_of_chunks must be integer and greater than 1!"
     }
     if (params.left_align && (!file(params.ref_fasta).exists() || !file(params.ref_fasta).isFile())) {
-        log.error "Reference FASTA file is required for left alignment!"
+        error "Reference FASTA file is required for left alignment!"
     }
 
     if (file(params.input).exists()){
@@ -35,7 +38,7 @@ workflow RUN_VEP_ANNOTATION{
                     [[id: id], vcf_file]
             }
         }else{
-            log.error "Input path is neither a file nor a directory: ${params.input}"
+            error "Input path is neither a file nor a directory: ${params.input}"
         }
         //remove genotypes from VCF files and normalize VCF files
         NO_G_VCF(vcf_input)
@@ -78,7 +81,7 @@ workflow RUN_VEP_ANNOTATION{
         def vep_options = """--dir_cache ${params.vep_data_dir} \
             --assembly ${params.assembly} \
             --fasta ${params.vep_fasta} \
-            --dir_plugins ${params.vep_plugins_dir} ${params.plugins_to_use}"""
+            --dir_plugins ${params.vep_plugins_dir} ${params.plugins}"""
         RUN_VEP(vcf_channel, vep_options)
         vep_vcfs=RUN_VEP.out.vep_vcf
 
@@ -154,6 +157,6 @@ workflow RUN_VEP_ANNOTATION{
             BGZIP3(hail_csq_tsv)
         }
     }else{
-        log.error "Input path doesn't exist: ${params.input}"
+        error "Input path doesn't exist: ${params.input}"
     }
 }

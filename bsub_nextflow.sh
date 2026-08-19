@@ -2,28 +2,27 @@
 
 # to run: bsub < $PWD/bsub_nextflow.sh
 
-#BSUB -o /lustre/scratch124/humgen/teams_v2/hgi/re3/DDD_WGS/farmout/%J.o
-#BSUB -e /lustre/scratch124/humgen/teams_v2/hgi/re3/DDD_WGS/farmout/%J.e
-#BSUB -M 8000
-#BSUB -R "select[mem>8000] rusage[mem=8000]"
-#BSUB -q oversubscribed
+#BSUB -o "VEP-%J-output.log"
+#BSUB -e "VEP-%J-errors.log"
+#BSUB -q "long"
 #BSUB -n 2
+#BSUB -M 8G
+#BSUB -R "select[mem>8G] rusage[mem=8G]"
 
-export HTTP_PROXY='http://wwwcache.sanger.ac.uk:3128'
-export HTTPS_PROXY='http://wwwcache.sanger.ac.uk:3128'
-export NXF_ANSI_LOG=false
-export NXF_OPTS="-Xms8G -Xmx8G -Dnxf.pool.maxThreads=2000"
-export NXF_VER=22.04.0-5697
+ml load cellgen/nextflow/24.10.2
+ml load cellgen/singularity
 
-module load cellgen/nextflow/24.10.2
-module load cellgen/singularity
+export NXF_OPTS='-Xms6G -Xmx22G -XX:+UseSerialGC'
 
 nfdir=/path/to/nf_vep_annotation/nextflow_pipeline
-workdir=/path?to/working/directory
+workdir=/path/to/working/directory
 
-nextflow -log nextflow.log run \
-${nfdir}/main.nf \
--profile sanger \
--w $workdir \
--with-trace \
--resume
+nextflow \
+	run ${nfdir}/main.nf \
+	-profile sanger \
+	-c custom_config.nf \
+	-w $workdir \
+	-resume \
+	-log vep.${LSB_JOBINDEX}.log \
+	-with-report vep_report.${LSB_JOBID}.html \
+	-with-trace \
