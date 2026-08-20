@@ -15,8 +15,8 @@ workflow RUN_VEP_ANNOTATION{
         file(params.publishdir).mkdirs()
     }
 
-    if (params.hail_tsv && !params.left_align) {
-        error "To generate Hail TSV, left alignment is required!"
+    if (params.wxs_tsv && !params.left_align) {
+        error "To generate WxS-QC TSV, left alignment is required!"
     }
     if (params.split_input && !(params.number_of_chunks.toString() ==~ /^[1-9][0-9]*$/)) {
         error "number_of_chunks must be a positive integer, got: ${params.number_of_chunks}"
@@ -46,7 +46,7 @@ workflow RUN_VEP_ANNOTATION{
 
         //normalize vcf files with or without left align indels
         reference_fasta=channel.fromPath(params.ref_fasta)
-        if (params.left_align) {//left align indels in VEP annotation. Required for hail file
+        if (params.left_align) {//left align indels in VEP annotation. Required for WxS-QC file
             NORM_VCF_LEFT_ALIGN(vcf_noG.combine(reference_fasta))
             vcf_norm=NORM_VCF_LEFT_ALIGN.out.la_vcf
         } else {//normalize VCF files without left align indels
@@ -86,7 +86,7 @@ workflow RUN_VEP_ANNOTATION{
         vep_vcfs=RUN_VEP.out.vep_vcf
 
         //extract CSQ header from the first VEP annotated VCF file
-        if (params.annotate_vcf || params.hail_tsv){
+        if (params.annotate_vcf || params.wxs_tsv){
             GET_CSQ_HEADER(vep_vcfs.first())
             header=GET_CSQ_HEADER.out.csq_header
         }
@@ -134,8 +134,8 @@ workflow RUN_VEP_ANNOTATION{
             BGZIP2(all_csqs)
         }
 
-        //make tsv files for hail qc
-        if (params.hail_tsv && params.left_align){
+        //make tsv files for WxS-QC qc
+        if (params.wxs_tsv && params.left_align){
             BCFTOOLS_SPLIT_VEP(vep_vcfs)
             //combine VEP annotations from all shards
             tsvs=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map{
@@ -146,15 +146,15 @@ workflow RUN_VEP_ANNOTATION{
             }
             if (file(params.input).isDirectory() || params.split_input){
                 COMBINE_TSVS(vep_tsvs)
-                hail_csq_tsv=COMBINE_TSVS.out.vep_annotations
+                wxs_csq_tsv=COMBINE_TSVS.out.vep_annotations
             }else{
-                hail_csq_tsv=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map { meta, file ->
+                wxs_csq_tsv=BCFTOOLS_SPLIT_VEP.out.vep_split_tsv.map { meta, file ->
                     def target = file.resolveSibling('WxS_QC_CSQ.tsv')
                     file.copyTo(target)
                     [[id:'annotation_concatination'], target]
                 }
             }
-            BGZIP3(hail_csq_tsv)
+            BGZIP3(wxs_csq_tsv)
         }
     }else{
         error "Input path doesn't exist: ${params.input}"
