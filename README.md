@@ -106,7 +106,7 @@ All defaults live in `conf/params.config`. The ones you'll most commonly want to
 | `input` | VCF file or folder (see [Input](#input)) |
 | `publishdir` | Where final results are copied to |
 | `split_input` / `number_of_chunks` | Parallelise annotation of a large VCF |
-| `transcript_mode` | `all` \| `worst` \| `primary` \| `main` — which transcript(s) VEP reports per variant |
+| `transcript_mode` | `all` \| `worst` \| `primary` \| `mane` — passed as the `-s` (`--select`) option to `bcftools +split-vep` when extracting `CSQ` into TSV, controlling which transcript(s) are reported per variant |
 | `annotate_vcf` / `csq_tsv` / `wxs_tsv` / `left_align` | Run modes, see above |
 | `ref_fasta` | Reference FASTA for left-alignment (only read when `left_align = true`) |
 | `vep_data_dir` / `vep_plugins_dir` / `vep_fasta` / `assembly` | VEP cache/plugin/reference locations |

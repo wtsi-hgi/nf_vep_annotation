@@ -27,6 +27,10 @@ workflow RUN_VEP_ANNOTATION{
     if (params.left_align && (!file(params.ref_fasta).exists() || !file(params.ref_fasta).isFile())) {
         error "Reference FASTA file is required for left alignment!"
     }
+    def valid_transcript_modes = ['all', 'worst', 'primary', 'mane']
+    if (!(params.transcript_mode in valid_transcript_modes)) {
+        error "transcript_mode must be one of ${valid_transcript_modes}, got: ${params.transcript_mode}"
+    }
 
     if (file(params.input).exists()){
         if (file(params.input).isFile()){//one VCF file as an input
