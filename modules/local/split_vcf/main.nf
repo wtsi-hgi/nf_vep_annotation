@@ -8,15 +8,15 @@ process NORM_VCF {
     tuple val(meta), path (vcf_file)
 
     output:
-    tuple val(meta), path ("${vcf_file.baseName}.normalized.vcf.gz"), emit: normolized_vcf
+    tuple val(meta), path ("*.normalized.vcf.gz"), emit: normolized_vcf
     path "versions.yml"                     , emit: versions
 
     script:
         //def args = task.ext.args ?: ''
         //def prefix = task.ext.prefix ?: "${meta.id}"
-
+        def prefix = vcf_file.getName().replaceAll(/\.(vcf|bcf)(\.gz|\.bgz)?$/, '')
         """
-        bcftools norm --threads ${task.cpus} -m- ${vcf_file} -Oz -o ${vcf_file.baseName}.normalized.vcf.gz
+        bcftools norm --threads ${task.cpus} -m- ${vcf_file} -Oz -o ${prefix}.normalized.vcf.gz
 
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
@@ -25,7 +25,7 @@ process NORM_VCF {
         """
     stub:
         """
-        touch ${vcf_file.baseName}.normalized.vcf.gz
+        touch ${prefix}.normalized.vcf.gz
         touch versions.yml
         """  
 }
@@ -38,19 +38,18 @@ process NORM_VCF_LEFT_ALIGN {
         'biocontainers/bcftools:1.23.1--hb2cee57_0' }"
 
     input:
-    tuple val(meta), path (vcf_file)
-    path reference_fasta
+    tuple val(meta), path (vcf_file), path (reference_fasta)
 
     output:
-    tuple val(meta), path("${vcf_file.baseName}.normalized.vcf.gz"), emit: la_vcf
+    tuple val(meta), path("*.normalized.vcf.gz"), emit: la_vcf
     path "versions.yml", emit: versions
 
     script:
         def args = task.ext.args ?: ''
-        def prefix = task.ext.prefix ?: "${meta.id}"
-
+        //def prefix = task.ext.prefix ?: "${meta.id}"
+        def prefix = vcf_file.getName().replaceAll(/\.(vcf|bcf)(\.gz|\.bgz)?$/, '')
         """    
-        bcftools norm --threads ${task.cpus} -m- -f ${reference_fasta} ${vcf_file} -Oz -o ${vcf_file.baseName}.normalized.vcf.gz
+        bcftools norm --threads ${task.cpus} -m- -f ${reference_fasta} ${vcf_file} -Oz -o ${prefix}.normalized.vcf.gz
         
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
@@ -59,7 +58,7 @@ process NORM_VCF_LEFT_ALIGN {
         """
     stub:
         """
-        touch ${vep_vcf_file.name.replaceAll(/\.vcf.*/, '.la.csq.tsv')}
+        touch ${prefix}.normalized.vcf.gz
         touch versions.yml
         """
 }
@@ -75,15 +74,15 @@ process NO_G_VCF {
     tuple val(meta), path(vcf_file)
 
     output:
-    tuple val(meta), path ("${vcf_file.baseName}.noG.vcf.gz"), emit: no_g_vcf
+    tuple val(meta), path ("*.noG.vcf.gz"), emit: no_g_vcf
     path "versions.yml"                     , emit: versions
 
     script:
         //def args = task.ext.args ?: ''
         //def prefix = task.ext.prefix ?: "${meta.id}"
-
+        def prefix = vcf_file.getName().replaceAll(/\.(vcf|bcf)(\.gz|\.bgz)?$/, '')
         """
-        bcftools view  --threads ${task.cpus} --drop-genotypes ${vcf_file} -Oz -o ${vcf_file.baseName}.noG.vcf.gz
+        bcftools view  --threads ${task.cpus} --drop-genotypes ${vcf_file} -Oz -o ${prefix}.noG.vcf.gz
     
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
@@ -92,7 +91,7 @@ process NO_G_VCF {
         """
     stub:
         """
-        touch ${vcf_file.baseName}.noG.vcf.gz
+        touch ${prefix}.noG.vcf.gz
         touch versions.yml
         """  
 }
@@ -109,13 +108,14 @@ process SPLIT_VCF {
     val N
 
     output:
-    tuple val(meta), path ('chunk_*.vcf.gz'), emit: splited_vcfs
+    tuple val(meta), path ('*.chunk_*.vcf.gz'), emit: splited_vcfs
     path "versions.yml"                     , emit: versions
 
     script:
         def args = task.ext.args ?: ''
-        def prefix = task.ext.prefix ?: "${meta.id}"
+        //def prefix = task.ext.prefix ?: "${meta.id}"
         def suffix_length = N.toString().length()
+        def prefix = vcf_file.getName().replaceAll(/\.(vcf|bcf)(\.gz|\.bgz)?$/, '')
         """
         total_variants=\$(bcftools view --no-header ${vcf_file} | wc -l)
         chunk_size=\$(( (total_variants + ${N} - 1) / ${N} ))
@@ -125,8 +125,6 @@ process SPLIT_VCF {
             { cat header.txt; cat; } | bgzip > "\$FILE"; 
         }
         export -f split_filter
-
-        #bcftools view --no-header ${vcf_file} | split --numeric-suffixes=1 --suffix-length=${suffix_length} --lines="\$chunk_size" --additional-suffix=".vcf.gz" --filter='split_filter' - chunk_
 
         bcftools view --no-header ${vcf_file} | \
         awk -v chunk_size="\$chunk_size" '
@@ -139,7 +137,7 @@ process SPLIT_VCF {
                 if (cmd)
                     close(cmd)
 
-                filename = sprintf("chunk_%0'${suffix_length}'d.vcf.gz", chunk)
+                filename = sprintf("${prefix}.chunk_%0'${suffix_length}'d.vcf.gz", chunk)
                 cmd = "cat header.txt - | bgzip > " filename
                 chunk++
             }

@@ -34,7 +34,7 @@ process SPLIT_VCF_BED {
     stub:
         """
         i="1"
-        for i in \$(seq 1 ${N}); do
+        for i in \$(seq 1 10); do
             touch chunk_\${i}.vcf.gz
         done
         touch versions.yml

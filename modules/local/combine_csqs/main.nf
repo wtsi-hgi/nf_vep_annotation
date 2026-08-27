@@ -13,14 +13,13 @@ process COMBINE_CSQS {
 
     output:
     //tuple val ("combined CSQ"), path ("combined_vep_csq.tsv.gz"), path("combined_vep_csq.tsv.gz.tbi") , emit: vep_annotations
-    tuple val("combined CSQs"), path("combined_vep_csq.tsv") , emit: vep_annotations
+    tuple val(meta), path("${meta.id}.csq.tsv") , emit: vep_annotations
     script:
         """
-        cat ${vep_outputs.join(' ')} | sort -k1,1V -k2,2n > combined_vep_csq.tsv
+        cat ${vep_outputs.join(' ')} | sort -k1,1V -k2,2n > ${meta.id}.csq.tsv
         """
     stub:
         """
-        touch combined_vep_csq.tsv.gz
-        touch combined_vep_csq.tsv.gz.tbi
+        touch ${meta.id}.csq.tsv
         """
 }

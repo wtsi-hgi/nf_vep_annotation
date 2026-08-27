@@ -5,7 +5,7 @@ process BCFTOOLS_SPLIT_VEP {
         'biocontainers/bcftools:1.23.1--hb2cee57_0' }"
 
     input:
-    tuple val(meta), path (vep_vcf_file),  path (ref_fa)
+    tuple val(meta), path (vep_vcf_file)
    
 
     output:
@@ -17,7 +17,7 @@ process BCFTOOLS_SPLIT_VEP {
         def prefix = task.ext.prefix ?: "${meta.id}"
 
         """
-        bcftools norm -f ${ref_fa} -Ov ${vep_vcf_file} | bcftools +split-vep -s worst -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%CSQ\t%Consequence\t%SYMBOL\t%HGNC_ID\n' > ${vep_vcf_file.baseName.replaceAll(/\.vcf.*/, '.tsv')}
+        bcftools +split-vep -s worst -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\t%CSQ\t%Consequence\t%SYMBOL\t%HGNC_ID\n' ${vep_vcf_file} > ${vep_vcf_file.baseName.replaceAll(/\.vcf.*/, '.tsv')}
 
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
