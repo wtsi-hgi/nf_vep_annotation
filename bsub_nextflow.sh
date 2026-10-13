@@ -18,11 +18,11 @@ nfdir=/path/to/nf_vep_annotation/nextflow_pipeline
 workdir=/path/to/working/directory
 
 nextflow \
+	-log vep.${LSB_JOBINDEX}.log \
 	run ${nfdir}/main.nf \
 	-profile sanger \
 	-c custom_config.nf \
 	-w $workdir \
 	-resume \
-	-log vep.${LSB_JOBINDEX}.log \
 	-with-report vep_report.${LSB_JOBID}.html \
 	-with-trace \
